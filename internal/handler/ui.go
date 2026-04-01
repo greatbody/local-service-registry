@@ -14,7 +14,7 @@ const indexHTML = `<!DOCTYPE html>
     --green-bg: #dcfce7; --red-bg: #fee2e2; --yellow-bg: #fef9c3;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 2rem; max-width: 960px; margin: 0 auto; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 2rem; }
   h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: .25rem; }
   .subtitle { color: var(--muted); font-size: .875rem; margin-bottom: 1.5rem; }
   .toolbar { display: flex; gap: .75rem; margin-bottom: 1.5rem; align-items: center; flex-wrap: wrap; }
@@ -37,6 +37,8 @@ const indexHTML = `<!DOCTYPE html>
   .svc-desc { color: var(--muted); font-size: .8rem; margin-top: .125rem; }
   .svc-url a { color: var(--accent); text-decoration: none; font-size: .8rem; word-break: break-all; }
   .svc-url a:hover { text-decoration: underline; }
+  .svc-ext { margin-top: .25rem; }
+  .svc-ext a { color: var(--green); font-size: .75rem; }
   .time { font-size: .8rem; color: var(--muted); }
   .btn-del { background: none; border: none; cursor: pointer; color: var(--muted); font-size: .8rem; padding: .25rem .5rem; border-radius: .25rem; }
   .btn-del:hover { background: var(--red-bg); color: var(--red); }
@@ -121,9 +123,14 @@ async function loadServices() {
     const desc = s.description ? '<div class="svc-desc">' + esc(s.description) + '</div>' : '';
     const badge = 'badge badge-' + s.status;
     const checked = s.last_checked_at ? timeAgo(new Date(s.last_checked_at)) : '-';
+    const displayUrl = s.display_url || s.url;
+    let urlCell = '<a href="' + esc(displayUrl) + '" target="_blank" rel="noopener noreferrer">' + esc(displayUrl) + '</a>';
+    if (s.external_url) {
+      urlCell += '<div class="svc-ext"><a href="' + esc(s.external_url) + '" target="_blank" rel="noopener noreferrer">External: ' + esc(s.external_url) + '</a></div>';
+    }
     return '<tr>' +
       '<td><div class="svc-name">' + esc(s.name) + '</div>' + desc + '</td>' +
-      '<td class="svc-url"><a href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' + esc(s.url) + '</a></td>' +
+      '<td class="svc-url">' + urlCell + '</td>' +
       '<td><span class="' + badge + '">' + s.status + '</span></td>' +
       '<td class="time">' + checked + '</td>' +
       '<td><button class="btn-del" onclick="del(\'' + s.id + '\',\'' + esc(s.name) + '\')">Remove</button></td>' +

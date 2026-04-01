@@ -16,12 +16,13 @@ import (
 type Handler struct {
 	store   *store.Store
 	checker *checker.Checker
+	localIP string
 	mux     *http.ServeMux
 }
 
 // New creates a Handler wired to the given store and checker.
 func New(s *store.Store, chk *checker.Checker) *Handler {
-	h := &Handler{store: s, checker: chk}
+	h := &Handler{store: s, checker: chk, localIP: detectLocalIP()}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", h.serveUI)
 	mux.HandleFunc("GET /services", h.listServices)
@@ -53,6 +54,9 @@ func (h *Handler) listServices(w http.ResponseWriter, r *http.Request) {
 	if services == nil {
 		services = []*model.Service{}
 	}
+	for _, svc := range services {
+		svc.ResolveDisplayURLs(h.localIP)
+	}
 	writeJSON(w, http.StatusOK, services)
 }
 
@@ -75,6 +79,7 @@ func (h *Handler) registerService(w http.ResponseWriter, r *http.Request) {
 		Name:         req.Name,
 		URL:          req.URL,
 		Description:  req.Description,
+		RemoteIP:     extractIP(r),
 		Status:       model.StatusUnknown,
 		RegisteredAt: time.Now(),
 	}
@@ -102,6 +107,7 @@ func (h *Handler) getService(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "service not found")
 		return
 	}
+	svc.ResolveDisplayURLs(h.localIP)
 	writeJSON(w, http.StatusOK, svc)
 }
 

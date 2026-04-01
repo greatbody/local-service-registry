@@ -37,19 +37,24 @@ func migrate(db *sql.DB) error {
 		name           TEXT NOT NULL,
 		url            TEXT NOT NULL UNIQUE,
 		description    TEXT NOT NULL DEFAULT '',
+		remote_ip      TEXT NOT NULL DEFAULT '',
 		status         TEXT NOT NULL DEFAULT 'unknown',
 		registered_at  DATETIME NOT NULL,
 		last_checked_at DATETIME
 	);`
-	_, err := db.Exec(ddl)
-	return err
+	if _, err := db.Exec(ddl); err != nil {
+		return err
+	}
+	// Migration: add remote_ip column for existing databases.
+	_, _ = db.Exec(`ALTER TABLE services ADD COLUMN remote_ip TEXT NOT NULL DEFAULT ''`)
+	return nil
 }
 
 // Insert adds a new service record.
 func (s *Store) Insert(svc *model.Service) error {
-	const q = `INSERT INTO services (id, name, url, description, status, registered_at)
-	            VALUES (?, ?, ?, ?, ?, ?)`
-	_, err := s.db.Exec(q, svc.ID, svc.Name, svc.URL, svc.Description, svc.Status, svc.RegisteredAt)
+	const q = `INSERT INTO services (id, name, url, description, remote_ip, status, registered_at)
+	            VALUES (?, ?, ?, ?, ?, ?, ?)`
+	_, err := s.db.Exec(q, svc.ID, svc.Name, svc.URL, svc.Description, svc.RemoteIP, svc.Status, svc.RegisteredAt)
 	return err
 }
 
@@ -68,12 +73,12 @@ func (s *Store) Delete(id string) error {
 
 // Get retrieves a single service by ID.
 func (s *Store) Get(id string) (*model.Service, error) {
-	const q = `SELECT id, name, url, description, status, registered_at, last_checked_at
+	const q = `SELECT id, name, url, description, remote_ip, status, registered_at, last_checked_at
 	            FROM services WHERE id = ?`
 	svc := &model.Service{}
 	var lastChecked sql.NullTime
 	err := s.db.QueryRow(q, id).Scan(
-		&svc.ID, &svc.Name, &svc.URL, &svc.Description,
+		&svc.ID, &svc.Name, &svc.URL, &svc.Description, &svc.RemoteIP,
 		&svc.Status, &svc.RegisteredAt, &lastChecked,
 	)
 	if err != nil {
@@ -87,7 +92,7 @@ func (s *Store) Get(id string) (*model.Service, error) {
 
 // List returns all registered services.
 func (s *Store) List() ([]*model.Service, error) {
-	const q = `SELECT id, name, url, description, status, registered_at, last_checked_at
+	const q = `SELECT id, name, url, description, remote_ip, status, registered_at, last_checked_at
 	            FROM services ORDER BY registered_at DESC`
 	rows, err := s.db.Query(q)
 	if err != nil {
@@ -100,7 +105,7 @@ func (s *Store) List() ([]*model.Service, error) {
 		svc := &model.Service{}
 		var lastChecked sql.NullTime
 		if err := rows.Scan(
-			&svc.ID, &svc.Name, &svc.URL, &svc.Description,
+			&svc.ID, &svc.Name, &svc.URL, &svc.Description, &svc.RemoteIP,
 			&svc.Status, &svc.RegisteredAt, &lastChecked,
 		); err != nil {
 			return nil, err
